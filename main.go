@@ -3,26 +3,42 @@ package main
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
-func handlerFunc(w http.ResponseWriter, r *http.Request) {
+func home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	if r.URL.Path == "/" {
-		fmt.Fprint(w, "<h1>Welcome to my site</h1>")
-	} else if r.URL.Path == "/contact" {
-		fmt.Fprint(w, "to get in touch, please send an email "+
-			"to <a href=\"mailto:support@lenslocked.com\">"+
-			"support@lenslockedd.com</a>.")
-	} else {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, "<h1>We could not find the page "+
-			"were looking for :(</h1>"+
-			"<p>Please email us if you keep being sent to an "+
-			"invalid page.</p>")
-	}
+	fmt.Fprint(w, "<h1>Welcome to my site!</h1>")
+}
+
+func contact(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprint(w, "to get in touch, please send an email "+
+		"to <a href=\"mailto:support@lenslocked.com\">"+
+		"support@lenslockedd.com</a>.")
+}
+
+func faq(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprint(w, "<h1>Freqently Asked Questions</h1>")
+	fmt.Fprint(w, "<ul>"+
+		"<li> Why is HTML so annoying</li>"+
+		"<li> This is an un-ordered list</li>"+
+		"<li> It should have bullet points</li>"+
+		"<li> I should probably move my html to a separate folder</li></ul>")
+}
+
+func notFoundHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprint(w, "Couldn't find page 404&#128169")
 }
 
 func main() {
-	http.HandleFunc("/", handlerFunc)
-	http.ListenAndServe(":3000", nil)
+	r := mux.NewRouter()
+	r.NotFoundHandler = http.HandlerFunc(notFoundHandler)
+	r.HandleFunc("/", home)
+	r.HandleFunc("/contact", contact)
+	r.HandleFunc("/faq", faq)
+	http.ListenAndServe(":3000", r)
 }
