@@ -2,37 +2,39 @@ package main
 
 import (
 	"fmt"
-	"html/template"
 	"net/http"
 
-	"github.com/julienschmidt/httprouter"
+	"github.com/gorilla/mux"
+
+	"github.com/gbadali/lenslocked.com/views"
 )
 
-var homeTemplate *template.Template
-var contactTemplate *template.Template
+var homeView *views.View
+var contactView *views.View
+var faqView *views.View
 
-func home(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	if err := homeTemplate.Execute(w, nil); err != nil {
+	err := homeView.Template.ExecuteTemplate(w, contactView.Layout, nil)
+	if err != nil {
 		panic(err)
 	}
 }
 
-func contact(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func contact(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	if err := contactTemplate.Execute(w, nil); err != nil {
+	err := contactView.Template.ExecuteTemplate(w, homeView.Layout, nil)
+	if err != nil {
 		panic(err)
 	}
 }
 
-func faq(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func faq(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprint(w, "<h1>Freqently Asked Questions</h1>")
-	fmt.Fprint(w, "<ul>"+
-		"<li> Why is HTML so annoying</li>"+
-		"<li> This is an un-ordered list</li>"+
-		"<li> It should have bullet points</li>"+
-		"<li> I should probably move my html to a separate folder</li></ul>")
+	err := faqView.Template.ExecuteTemplate(w, faqView.Layout, nil)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
@@ -42,20 +44,15 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	var err error
-	homeTemplate, err = template.ParseFiles("views/home.html")
-	if err != nil {
-		panic(err)
-	}
-	contactTemplate, err = template.ParseFiles("views/contact.html")
-	if err != nil {
-		panic(err)
-	}
-	router := httprouter.New()
-	router.GET("/", home)
-	router.GET("/contact", contact)
-	router.GET("/faq", faq)
-	var h http.Handler = http.HandlerFunc(notFoundHandler)
-	router.NotFound = h
-	http.ListenAndServe(":3000", router)
+	homeView = views.NewView("bootstrap", "views/home.html")
+	contactView = views.NewView("bootstrap", "views/contact.html")
+	faqView = views.NewView("bootstrap", "views/faq.html")
+
+	r := mux.NewRouter()
+	r.HandleFunc("/", home)
+	r.HandleFunc("/contact", contact)
+	r.HandleFunc("/faq", faq)
+	r.NotFoundHandler = http.HandlerFunc(notFoundHandler)
+
+	http.ListenAndServe(":3000", r)
 }
