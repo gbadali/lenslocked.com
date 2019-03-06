@@ -6,13 +6,13 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"github.com/gbadali/lenslocked.com/controllers"
 	"github.com/gbadali/lenslocked.com/views"
 )
 
 var (
 	homeView    *views.View
 	contactView *views.View
-	signupView  *views.View
 	faqView     *views.View
 )
 
@@ -24,11 +24,6 @@ func home(w http.ResponseWriter, r *http.Request) {
 func contact(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	must(contactView.Render(w, nil))
-}
-
-func signup(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-	must(signupView.Render(w, nil))
 }
 
 func faq(w http.ResponseWriter, r *http.Request) {
@@ -43,15 +38,15 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	signupView = views.NewView("bootstrap", "views/signup.gohtml")
 	homeView = views.NewView("bootstrap", "views/home.gohtml")
 	contactView = views.NewView("bootstrap", "views/contact.gohtml")
 	faqView = views.NewView("darkLayout", "views/faq.gohtml")
+	usersC := controllers.NewUsers()
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", home)
 	r.HandleFunc("/contact", contact)
-	r.HandleFunc("/signup", signup)
+	r.HandleFunc("/signup", usersC.New)
 	r.HandleFunc("/faq", faq)
 	r.NotFoundHandler = http.HandlerFunc(notFoundHandler)
 
