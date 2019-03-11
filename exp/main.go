@@ -34,14 +34,23 @@ func main() {
 	defer db.Close()
 
 	var id int
-	var name, email string
-	row := db.QueryRow(`
-	SELECT id, name, email
-	FROM users
-	WHERE id=$1`, 1)
-	err = row.Scan(&id, &name, &email)
-	if err != nil {
-		panic(err)
+	for i := 1; i < 6; i++ {
+		// create somoe fake data
+		userID := 1
+		if i > 3 {
+			userID = 2
+		}
+		amount := 1000 * i
+		description := fmt.Sprintf("USB-C Adapter x%d", i)
+
+		err = db.QueryRow(`
+			INSERT INTO orders (user_id, amount, description)
+			VALUES ($1, $2, $3)
+			RETURNING id`,
+			userID, amount, description).Scan(&id)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Created an ordder with the ID:", id)
 	}
-	fmt.Println("ID:", id, "Name:", name, "Email:", email)
 }
