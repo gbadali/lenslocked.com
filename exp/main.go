@@ -33,21 +33,15 @@ func main() {
 	fmt.Println("succesfully connected!")
 	defer db.Close()
 
-	_, err = db.Exec(`
-	INSERT INTO users(name, email)
-	VALUES ($1, $2)`,
-		"Jon Calhoun", "jon@calhoun.io")
-	if err != nil {
-		panic(err)
-	}
-
 	var id int
+	var name, email string
 	row := db.QueryRow(`
-	INSERT INTO users(name, email)
-	VALUES ($1, $2) RETURNING id`,
-		"Jon Calhoun", "jon@calhooun.io")
-	err = row.Scan(&id)
+	SELECT id, name, email
+	FROM users
+	WHERE id=$1`, 1)
+	err = row.Scan(&id, &name, &email)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("ID:", id, "Name:", name, "Email:", email)
 }
