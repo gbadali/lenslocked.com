@@ -24,19 +24,18 @@ func main() {
 		panic(err)
 	}
 	defer us.Close()
-	us.DestructiveReset()
-	// Create a user
-	user := models.User{
-		Name:  "Michael Scott",
-		Email: "michael@dundermifflin.com",
-	}
-	if err := us.Create(&user); err != nil {
-		panic(err)
-	}
 
-	foundUser, err := us.ByID(1)
+	foundUser, err := us.ByEmail("michael@dundermifflin.com")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(foundUser)
+
+	if err := us.Delete(foundUser.ID); err != nil {
+		panic(err)
+	}
+	// Verify the user is deleted
+	_, err = us.ByID(foundUser.ID)
+	if err != models.ErrNotFound {
+		panic("user was not deleted")
+	}
 }
