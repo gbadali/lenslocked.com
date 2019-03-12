@@ -4,9 +4,19 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gbadali/lenslocked.com/models"
+
 	"github.com/gorilla/mux"
 
 	"github.com/gbadali/lenslocked.com/controllers"
+)
+
+const (
+	host     = "localhost"
+	port     = 5432
+	user     = "postgres"
+	password = "develpment"
+	dbname   = "lenslocked_dev"
 )
 
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
@@ -16,6 +26,19 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	// Create a DB connection string and then use it to
+	// create our model services.
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+
+	us, err := models.NewUserService(psqlInfo)
+	if err != nil {
+		panic(err)
+	}
+	defer us.Close()
+	us.AutoMigrate()
+
 	staticC := controllers.NewStatic()
 	usersC := controllers.NewUsers()
 
