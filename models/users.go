@@ -3,21 +3,27 @@ package models
 import (
 	"errors"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
 var (
-	// ErrNotFound is returned when a resource cannot be foound
+	// ErrNotFound is returned when a resource cannot be found
 	// in the database.
-	ErrNotFound  = errors.New("models: resource not found")
+	ErrNotFound = errors.New("models: resource not found")
+	// ErrInvalidID is used when we can't find the user
 	ErrInvalidID = errors.New("models: ID provided was invalid")
+	userPwPepper = "Secret-random-string"
 )
 
 type User struct {
 	gorm.Model
-	Name  string
-	Email string `gorm:"not null;unique_index"`
+	Name         string
+	Email        string `gorm:"not null;unique_index"`
+	Password     string `gorm:"-"`
+	PasswordHash string `gorm:"not null"`
 }
 
 type UserService struct {
@@ -43,6 +49,15 @@ func (us *UserService) Close() error {
 // Create will create the provided user and backfill data
 // like the ID, CreatedAT, and UpdatedAt fields.
 func (us *UserService) Create(user *User) error {
+	pwBytes := []byte(user.Password + userPwPepper)
+	hashedBtes, err := bcrypt.GenerateFromPassword(
+		pwBytes, bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	user.PasswordHash = string(hashedBtes)
+	// set the password field to an empty string just in case
+	user.Password = ""
 	return us.db.Create(user).Error
 }
 

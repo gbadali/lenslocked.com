@@ -38,6 +38,8 @@ func main() {
 	}
 	defer us.Close()
 	us.AutoMigrate()
+	// Do a destructive reset on the DB for schema changes we can't migrate
+	// us.DestructiveReset()
 
 	staticC := controllers.NewStatic()
 	usersC := controllers.NewUsers(us)
