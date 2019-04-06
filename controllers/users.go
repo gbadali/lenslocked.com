@@ -9,16 +9,16 @@ import (
 )
 
 type Users struct {
-	NewView *views.View
+	NewView   *views.View
 	LoginView *views.View
-	us      *models.UserService
+	us        *models.UserService
 }
 
 func NewUsers(us *models.UserService) *Users {
 	return &Users{
-		NewView: views.NewView("bootstrap", "users/new"),
-		LoginView: views.NewView("bootstrap", "users/login")
-		us:      us,
+		NewView:   views.NewView("bootstrap", "users/new"),
+		LoginView: views.NewView("bootstrap", "users/login"),
+		us:        us,
 	}
 }
 
@@ -55,7 +55,7 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 type LoginForm struct {
-	Email string `schema:"email"`
+	Email    string `schema:"email"`
 	Password string `schema:"password"`
 }
 
@@ -63,11 +63,20 @@ type LoginForm struct {
 // tries to log in as an existing user (via email & pw).
 //
 // POST /login
-func (u *Users) Login(w http.ResponseWriter, r *http.Request){
+func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 	form := LoginForm{}
 	if err := parseForm(r, &form); err != nil {
 		panic(err)
 	}
-	// We will eventually do something to see if the
-	// information provided is correct.
+	user, err := u.us.Authenticate(form.Email, form.Password)
+	switch err {
+	case models.ErrNotFound:
+		fmt.Fprintln(w, "Invalid email address.")
+	case models.ErrInvallidPassword:
+		fmt.Fprintln(w, "Invalid password provided.")
+	case nil:
+		fmt.Fprintln(w, user)
+	default:
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
