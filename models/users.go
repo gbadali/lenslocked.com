@@ -15,7 +15,10 @@ var (
 	ErrNotFound = errors.New("models: resource not found")
 	// ErrInvalidID is used when we can't find the user
 	ErrInvalidID = errors.New("models: ID provided was invalid")
-	userPwPepper = "Secret-random-string"
+	// ErrInvalidPassword is returned when an invalid passwordd
+	// is used attempting to authnticate a user.
+	ErrInvallidPassword = errors.New("models: incorrect password provided")
+	userPwPepper        = "Secret-random-string"
 )
 
 type User struct {
@@ -107,6 +110,35 @@ func (us *UserService) ByEmail(email string) (*User, error) {
 	db := us.db.Where("email = ?", email)
 	err := first(db, &user)
 	return &user, err
+}
+
+// Authenticate can be used to authenticate a user with the
+// provided email address and password.
+// If the email address provided is invalid, this will return
+//	nil, ErrNotFound
+// If the password provided is invallid, this will return
+//	nil, ErrIvalidPassword
+// If the email and password are both valid, this will return
+//  user, nil
+// Otherwise if another error is encountered this will return
+//  nil, error
+func (us *UserService) Authenticate(email, password string) (*User, error) {
+	foundUser, err := us.ByEmail(email)
+	if err != nil {
+		return nil, err
+	}
+	err = bcrypt.CompareHashAndPassword(
+		[]byte(foundUser.PasswordHash),
+		[]byte(password+userPwPepper))
+
+	switch err {
+	case nil:
+		return foundUser, nil
+	case bcrypt.ErrMismatchedHashAndPassword:
+		return nil, ErrInvallidPassword
+	default:
+		return nil, err
+	}
 }
 
 // AutoMigrate will attempt to automatically migrate the
