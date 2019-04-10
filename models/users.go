@@ -3,11 +3,19 @@ package models
 import (
 	"errors"
 
+	"github.com/gbadali/lenslocked.com/hash"
+
+	"github.com/gbadali/lenslocked.com/rand"
+
+	"github.com/gbadali/lenslockkked.com/rand"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
+
+// TODO: remove this
+const hmacSecretKey = "secret-hmac-key"
 
 var (
 	// ErrNotFound is returned when a resource cannot be found
@@ -27,20 +35,28 @@ type User struct {
 	Email        string `gorm:"not null;unique_index"`
 	Password     string `gorm:"-"`
 	PasswordHash string `gorm:"not null"`
+	Remember     string `gorm:"-"`
+	RememberHash string `gorm:"not null;unique_index`
 }
 
 type UserService struct {
-	db *gorm.DB
+	db   *gorm.DB
+	hmac hash.HMAC
 }
 
+// NewUserService takes the connection  info in as a string and
+// returns a pointer to a UserService struct which for now
+// holds the database info and the hmac info.
 func NewUserService(connectionInfo string) (*UserService, error) {
 	db, err := gorm.Open("postgres", connectionInfo)
 	if err != nil {
 		return nil, err
 	}
 	db.LogMode(true)
+	hmac := hash.NewHMAC(hmacSecretKey)
 	return &UserService{
-		db: db,
+		db:   db,
+		hmac: hmac,
 	}, nil
 }
 
@@ -61,6 +77,14 @@ func (us *UserService) Create(user *User) error {
 	user.PasswordHash = string(hashedBtes)
 	// set the password field to an empty string just in case
 	user.Password = ""
+	if user.Remember == "" {
+		token, err := rand.RememberToken()
+		if err != nil {
+			return err
+		}
+		user.Remember = token
+	}
+	// TODO: Hash the toke and set it on user.RememberHash
 	return us.db.Create(user).Error
 }
 
