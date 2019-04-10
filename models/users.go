@@ -7,7 +7,6 @@ import (
 
 	"github.com/gbadali/lenslocked.com/rand"
 
-	"github.com/gbadali/lenslockkked.com/rand"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/jinzhu/gorm"
@@ -84,13 +83,16 @@ func (us *UserService) Create(user *User) error {
 		}
 		user.Remember = token
 	}
-	// TODO: Hash the toke and set it on user.RememberHash
+	user.RememberHash = us.hmac.Hash(user.Remember)
 	return us.db.Create(user).Error
 }
 
 // Update will update the provided user with all of the data
 // in the provied useer object.
 func (us *UserService) Update(user *User) error {
+	if user.Remember != "" {
+		user.RememberHash = us.hmac.Hash(user.Remember)
+	}
 	return us.db.Save(user).Error
 }
 
