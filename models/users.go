@@ -16,7 +16,9 @@ import (
 // TODO: remove this
 const hmacSecretKey = "secret-hmac-key"
 
+// I haven't implemented testing so I am just doing a little bit here.
 var _ UserDB = &userGorm{}
+var _ UserService = &userService{}
 
 var (
 	// ErrNotFound is returned when a resource cannot be found
@@ -61,6 +63,19 @@ type UserDB interface {
 	DestructiveReset() error
 }
 
+// UserService is a set of methods used to manipulate and
+// work with the user model
+type UserService interface {
+	// Authenticate will verify tha provided email address and
+	// password are correct. If they are correct, the user
+	// corresponding to the email will be returned. Otherwise
+	// You will recieve either:
+	// ErrNotFound, ErrInvalidPassword, or another err if
+	// something goes wrong.
+	Authenticate(email, password string) (*User, error)
+	UserDB
+}
+
 type User struct {
 	gorm.Model
 	Name         string
@@ -71,20 +86,20 @@ type User struct {
 	RememberHash string `gorm:"not null;unique_index`
 }
 
-type UserService struct {
+type userService struct {
 	UserDB
 }
 
 // NewUserService takes the connection  info in as a string and
 // returns a pointer to a UserService struct which for now
 // holds the database info and the hmac info.
-func NewUserService(connectionInfo string) (*UserService, error) {
+func NewUserService(connectionInfo string) (UserService, error) {
 	ug, err := newUserGorm(connectionInfo)
 	if err != nil {
 		return nil, err
 	}
-	return &UserService{
-		UserDB: userValidator{
+	return &userService{
+		UserDB: &userValidator{
 			UserDB: ug,
 		},
 	}, nil
@@ -227,7 +242,7 @@ func (ug *userGorm) ByRemember(token string) (*User, error) {
 //  user, nil
 // Otherwise if another error is encountered this will return
 //  nil, error
-func (us *UserService) Authenticate(email, password string) (*User, error) {
+func (us *userService) Authenticate(email, password string) (*User, error) {
 	foundUser, err := us.ByEmail(email)
 	if err != nil {
 		return nil, err
