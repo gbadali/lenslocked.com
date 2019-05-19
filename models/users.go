@@ -212,6 +212,18 @@ func (uv *userValidator) Update(user *User) error {
 	return uv.UserDB.Update(user)
 }
 
+// idGreaterThan checks to make sure the user.Id is greater than 0, if isn't it could
+// cause problems.  It returns a function of userValFn type which is just a function
+// that takes a pointer to a user and returns an error
+func (uv *userValidator) idGreaterThan(n uint) userValFn {
+	return userValFn(func(user *User) error {
+		if user.ID <= n {
+			return ErrIDInvalid
+		}
+		return nil
+	})
+}
+
 // setRemeberIfUnset checks to see if a Remember token is set and if not
 // it sets one it returns an error
 func (uv *userValidator) setRemeberIfUnset(user *User) error {
@@ -236,8 +248,11 @@ func (ug *userGorm) Update(user *User) error {
 // basically just checks to make sure the id is not 0
 // and then hands it of to the userGorm Delete method
 func (uv *userValidator) Delete(id uint) error {
-	if id == 0 {
-		return ErrIDInvalid
+	var user User
+	user.ID = id
+	err := runUserValFns(&user, uv.idGreaterThan(0))
+	if err != nil {
+		return err
 	}
 	return uv.UserDB.Delete(id)
 }
