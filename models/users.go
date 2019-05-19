@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/gbadali/lenslocked.com/hash"
 
@@ -29,7 +30,10 @@ var (
 	// ErrPasswordIncorrect is returned when an invalid password
 	// is used attempting to authnticate a user.
 	ErrPasswordIncorrect = errors.New("models: incorrect password provided")
-	userPwPepper         = "Secret-random-string"
+	// ErrEmailRequired is returned when an email address is
+	// not provided when creating a user
+	ErrEmailRequired = errors.New("models: email address is required")
+	userPwPepper     = "Secret-random-string"
 )
 
 // UserDB is used to interact with the users database.
@@ -194,7 +198,9 @@ func (uv *userValidator) Create(user *User) error {
 	err := runUserValFns(user,
 		uv.bcryptPassword,
 		uv.setRemeberIfUnset,
-		uv.hmacRemember)
+		uv.hmacRemember,
+		uv.normalizeEmail,
+		uv.requireEmail)
 	if err != nil {
 		return err
 	}
@@ -205,7 +211,9 @@ func (uv *userValidator) Create(user *User) error {
 func (uv *userValidator) Update(user *User) error {
 	err := runUserValFns(user,
 		uv.bcryptPassword,
-		uv.hmacRemember)
+		uv.hmacRemember,
+		uv.normalizeEmail,
+		uv.requireEmail)
 	if err != nil {
 		return err
 	}
@@ -235,6 +243,21 @@ func (uv *userValidator) setRemeberIfUnset(user *User) error {
 		return err
 	}
 	user.Remember = token
+	return nil
+}
+
+// normalizeEmail sets the email to lowercase and trims whitespace
+func (uv *userValidator) normalizeEmail(user *User) error {
+	user.Email = strings.ToLower(user.Email)
+	user.Email = strings.TrimSpace(user.Email)
+	return nil
+}
+
+// requireEmail checks to make sure the email is not blank
+func (uv *userValidator) requireEmail(user *User) error {
+	if user.Email == "" {
+		return ErrEmailRequired
+	}
 	return nil
 }
 
@@ -326,6 +349,19 @@ func (uv *userValidator) ByRemember(token string) (*User, error) {
 	}
 	// access the hashed token that uv.hmacRemember put in the user object
 	return uv.UserDB.ByRemember(user.RememberHash)
+}
+
+// ByEmail will normalize an email address before passing
+// it on to the database layer to perform the query.
+func (uv *userValidator) ByEmail(email string) (*User, error) {
+	user := User{
+		Email: email,
+	}
+	err := runUserValFns(&user, uv.normalizeEmail)
+	if err != nil {
+		return nil, err
+	}
+	return uv.UserDB.ByEmail(user.Email)
 }
 
 // Authenticate can be used to authenticate a user with the
