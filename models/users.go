@@ -191,16 +191,9 @@ func (ug *userGorm) Create(user *User) error {
 // Create will create the provided user and backfill data
 // like the ID, CreatedAt and UpdatedAt fields.
 func (uv *userValidator) Create(user *User) error {
-	if user.Remember == "" {
-		token, err := rand.RememberToken()
-		if err != nil {
-			return err
-		}
-		user.Remember = token
-	}
-
 	err := runUserValFns(user,
 		uv.bcryptPassword,
+		uv.setRemeberIfUnset,
 		uv.hmacRemember)
 	if err != nil {
 		return err
@@ -217,6 +210,20 @@ func (uv *userValidator) Update(user *User) error {
 		return err
 	}
 	return uv.UserDB.Update(user)
+}
+
+// setRemeberIfUnset checks to see if a Remember token is set and if not
+// it sets one it returns an error
+func (uv *userValidator) setRemeberIfUnset(user *User) error {
+	if user.Remember != "" {
+		return nil
+	}
+	token, err := rand.RememberToken()
+	if err != nil {
+		return err
+	}
+	user.Remember = token
+	return nil
 }
 
 // Update will update the provided user with all of the data
