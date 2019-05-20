@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"regexp"
 	"strings"
 
 	"github.com/gbadali/lenslocked.com/hash"
@@ -11,6 +12,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/jinzhu/gorm"
+	// blank import becuase this is only used in the import above
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
@@ -33,7 +35,13 @@ var (
 	// ErrEmailRequired is returned when an email address is
 	// not provided when creating a user
 	ErrEmailRequired = errors.New("models: email address is required")
-	userPwPepper     = "Secret-random-string"
+	// ErrEmailInvalid is returned when an email address provided
+	// does not match any of our requirements
+	ErrEmailInvalid = errors.New("models: email address is not valid")
+	// ErrEmailTaken is returned when an update or create is attempted
+	// with an email that is already in use.
+	ErrEmailTaken = errors.New("models: email address is already taken")
+	userPwPepper  = "Secret-random-string"
 )
 
 // UserDB is used to interact with the users database.
@@ -80,6 +88,7 @@ type UserService interface {
 	UserDB
 }
 
+// User holds the datat fields and approximates the database
 type User struct {
 	gorm.Model
 	Name         string
@@ -133,6 +142,42 @@ func (uv *userValidator) hmacRemember(user *User) error {
 	return nil
 }
 
+// emailFormat checks the to make sure the email format is correct
+func (uv *userValidator) emailFormat(user *User) error {
+	// we are validating against empty emails elsewhere
+	if user.Email == "" {
+		return nil
+	}
+	if !uv.emailRegex.MatchString(user.Email) {
+		return ErrEmailInvalid
+	}
+	return nil
+}
+
+// emailIsAvail checks to see if the email is already taken
+func (uv *userValidator) emailIsAvail(user *User) error {
+	existing, err := uv.ByEmail(user.Email)
+	if err == ErrNotFound {
+		// Email address is available if we don't find
+		// a user with that email address.
+		return nil
+	}
+	// We can't continue with our validation without a sucessful
+	// query, so if we get any error other than ErrNotFound we
+	// should return it.
+	if err != nil {
+		return err
+	}
+
+	// If we get here that means we found a user w/ this email
+	// address, so we need to see if this is the same user we
+	// are updating, or if we have a confict.
+	if uwer.ID != existing.ID {
+		return ErrEmailTaken
+	}
+	return nil
+}
+
 // NewUserService takes the connection  info in as a string and
 // returns a pointer to a UserService struct which for now
 // holds the database info and the hmac info.
@@ -142,10 +187,7 @@ func NewUserService(connectionInfo string) (UserService, error) {
 		return nil, err
 	}
 	hmac := hash.NewHMAC(hmacSecretKey)
-	uv := &userValidator{
-		hmac:   hmac,
-		UserDB: ug,
-	}
+	uv := newUserValidator(ug, hmac)
 	return &userService{
 		UserDB: uv,
 	}, nil
@@ -179,7 +221,19 @@ func newUserGorm(connectionInfo string) (*userGorm, error) {
 // UserDB in our interface chain.
 type userValidator struct {
 	UserDB
-	hmac hash.HMAC
+	hmac       hash.HMAC
+	emailRegex *regexp.Regexp
+}
+
+// newUserValidator takes a UserDB and HMAC and returns a pointer to a userValidator
+// it adds the regexp to check for emails
+func newUserValidator(udb UserDB, hmac hash.HMAC) *userValidator {
+	return &userValidator{
+		UserDB: udb,
+		hmac:   hmac,
+		emailRegex: regexp.MustCompile(
+			`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2, 16}$`),
+	}
 }
 
 // Close closes the userGorm database connection
@@ -200,7 +254,9 @@ func (uv *userValidator) Create(user *User) error {
 		uv.setRemeberIfUnset,
 		uv.hmacRemember,
 		uv.normalizeEmail,
-		uv.requireEmail)
+		uv.requireEmail,
+		uv.emailFormat,
+		uv.emailIsAvail)
 	if err != nil {
 		return err
 	}
@@ -213,7 +269,9 @@ func (uv *userValidator) Update(user *User) error {
 		uv.bcryptPassword,
 		uv.hmacRemember,
 		uv.normalizeEmail,
-		uv.requireEmail)
+		uv.requireEmail,
+		uv.emailFormat,
+		uv.emailIsAvail)
 	if err != nil {
 		return err
 	}
