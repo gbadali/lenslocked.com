@@ -82,7 +82,7 @@ type UserService interface {
 	// password are correct. If they are correct, the user
 	// corresponding to the email will be returned. Otherwise
 	// You will recieve either:
-	// ErrNotFound, ErrInvalidPassword, or another err if
+	// ErrNotFound, ErrPasswordIncorrect, or another err if
 	// something goes wrong.
 	Authenticate(email, password string) (*User, error)
 	UserDB
