@@ -45,7 +45,10 @@ var (
 	// a password that is less than 8 characters long.
 	ErrPasswordTooShort = errors.New("models: password must " +
 		"be at least 8 characters long")
-	userPwPepper = "Secret-random-string"
+	// ErrPasswordRequired is returne when a create is attempted
+	// without a user password provided.
+	ErrPasswordRequired = errors.New("models: password is required")
+	userPwPepper        = "Secret-random-string"
 )
 
 // UserDB is used to interact with the users database.
@@ -194,6 +197,21 @@ func (uv *userValidator) passwordMinLenght(user *User) error {
 	return nil
 }
 
+// passwordRequired checks to make sure a pw is provided
+func (uv *userValidator) passwordRequired(user *User) error {
+	if user.Password == "" {
+		return ErrPasswordRequired
+	}
+	return nil
+}
+
+func (uv *userValidator) passwordHashRequired(user *User) error {
+	if user.PasswordHash == "" {
+		return ErrPasswordRequired
+	}
+	return nil
+}
+
 // NewUserService takes the connection  info in as a string and
 // returns a pointer to a UserService struct which for now
 // holds the database info and the hmac info.
@@ -266,8 +284,10 @@ func (ug *userGorm) Create(user *User) error {
 // like the ID, CreatedAt and UpdatedAt fields.
 func (uv *userValidator) Create(user *User) error {
 	err := runUserValFns(user,
+		uv.passwordRequired,
 		uv.passwordMinLenght,
 		uv.bcryptPassword,
+		uv.passwordHashRequired,
 		uv.setRemeberIfUnset,
 		uv.hmacRemember,
 		uv.normalizeEmail,
@@ -285,6 +305,7 @@ func (uv *userValidator) Update(user *User) error {
 	err := runUserValFns(user,
 		uv.passwordMinLenght,
 		uv.bcryptPassword,
+		uv.passwordHashRequired,
 		uv.hmacRemember,
 		uv.normalizeEmail,
 		uv.requireEmail,
