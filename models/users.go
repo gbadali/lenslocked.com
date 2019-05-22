@@ -48,7 +48,15 @@ var (
 	// ErrPasswordRequired is returne when a create is attempted
 	// without a user password provided.
 	ErrPasswordRequired = errors.New("models: password is required")
-	userPwPepper        = "Secret-random-string"
+	// ErrRememberRequired is returned when a create or update
+	// is attempted without a user remember token hash
+	ErrRememberRequired = errors.New("models: remember toeken " +
+		"is required")
+	// ErrRememberTooShort is returned when a remember toeken is
+	// not at least 32 bytes.
+	ErrRememberTooShort = errors.New("models: remember toeken " +
+		"must be at least 32 bytes")
+	userPwPepper = "Secret-random-string"
 )
 
 // UserDB is used to interact with the users database.
@@ -147,6 +155,28 @@ func (uv *userValidator) hmacRemember(user *User) error {
 		return nil
 	}
 	user.RememberHash = uv.hmac.Hash(user.Remember)
+	return nil
+}
+
+func (uv *userValidator) rememberMinBytes(user *User) error {
+	if user.Remember == "" {
+		return nil
+	}
+	n, err := rand.NBytes(user.Remember)
+	if err != nil {
+		return err
+	}
+	if n < 32 {
+		return ErrRememberTooShort
+	}
+	return nil
+
+}
+
+func (uv *userValidator) rememberHashRequired(user *User) error {
+	if user.RememberHash == "" {
+		return ErrRememberRequired
+	}
 	return nil
 }
 
@@ -266,7 +296,7 @@ func newUserValidator(udb UserDB, hmac hash.HMAC) *userValidator {
 		UserDB: udb,
 		hmac:   hmac,
 		emailRegex: regexp.MustCompile(
-			`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2, 16}$`),
+			`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,16}$`),
 	}
 }
 
@@ -289,7 +319,9 @@ func (uv *userValidator) Create(user *User) error {
 		uv.bcryptPassword,
 		uv.passwordHashRequired,
 		uv.setRemeberIfUnset,
+		uv.rememberMinBytes,
 		uv.hmacRemember,
+		uv.rememberHashRequired,
 		uv.normalizeEmail,
 		uv.requireEmail,
 		uv.emailFormat,
@@ -306,7 +338,9 @@ func (uv *userValidator) Update(user *User) error {
 		uv.passwordMinLenght,
 		uv.bcryptPassword,
 		uv.passwordHashRequired,
+		uv.rememberMinBytes,
 		uv.hmacRemember,
+		uv.rememberHashRequired,
 		uv.normalizeEmail,
 		uv.requireEmail,
 		uv.emailFormat,
