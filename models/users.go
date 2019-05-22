@@ -41,7 +41,11 @@ var (
 	// ErrEmailTaken is returned when an update or create is attempted
 	// with an email that is already in use.
 	ErrEmailTaken = errors.New("models: email address is already taken")
-	userPwPepper  = "Secret-random-string"
+	// ErrPasswordTooShort is returned when a user tries to set
+	// a password that is less than 8 characters long.
+	ErrPasswordTooShort = errors.New("models: password must " +
+		"be at least 8 characters long")
+	userPwPepper = "Secret-random-string"
 )
 
 // UserDB is used to interact with the users database.
@@ -105,6 +109,7 @@ type userService struct {
 
 type userValFn func(*User) error
 
+// runUserValFns takes a bunch of userValFn and runs them
 func runUserValFns(user *User, fns ...userValFn) error {
 	for _, fn := range fns {
 		if err := fn(user); err != nil {
@@ -172,8 +177,19 @@ func (uv *userValidator) emailIsAvail(user *User) error {
 	// If we get here that means we found a user w/ this email
 	// address, so we need to see if this is the same user we
 	// are updating, or if we have a confict.
-	if uwer.ID != existing.ID {
+	if user.ID != existing.ID {
 		return ErrEmailTaken
+	}
+	return nil
+}
+
+// passwordMinLenght checks to make sure the password is more than 8 chars long
+func (uv *userValidator) passwordMinLenght(user *User) error {
+	if user.Password == "" {
+		return nil
+	}
+	if len(user.Password) < 8 {
+		return ErrPasswordTooShort
 	}
 	return nil
 }
@@ -250,6 +266,7 @@ func (ug *userGorm) Create(user *User) error {
 // like the ID, CreatedAt and UpdatedAt fields.
 func (uv *userValidator) Create(user *User) error {
 	err := runUserValFns(user,
+		uv.passwordMinLenght,
 		uv.bcryptPassword,
 		uv.setRemeberIfUnset,
 		uv.hmacRemember,
@@ -266,6 +283,7 @@ func (uv *userValidator) Create(user *User) error {
 // Update will hash a remember token if it is not provided.
 func (uv *userValidator) Update(user *User) error {
 	err := runUserValFns(user,
+		uv.passwordMinLenght,
 		uv.bcryptPassword,
 		uv.hmacRemember,
 		uv.normalizeEmail,
