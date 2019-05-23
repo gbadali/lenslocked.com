@@ -32,19 +32,11 @@ type SignupForm struct {
 // New is used to render the form where a user can create a new user account.
 // GET /signup
 func (u *Users) New(w http.ResponseWriter, r *http.Request) {
-	type Alert struct {
-		Level   string
-		Message string
-	}
-	type Data struct {
-		Alert *Alert
-		Yield interface{}
-	}
-	alert := Alert{
-		Level:   "success",
+	alert := views.Alert{
+		Level:   views.AlertLvlSuccess,
 		Message: "Successfully renderd a dynamic alert!",
 	}
-	data := Data{
+	data := views.Data{
 		Alert: &alert,
 		Yield: "this can be any data b/c its type is interface",
 	}
