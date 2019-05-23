@@ -48,3 +48,12 @@ func (d *Data) SetAlert(err error) {
 		Message: msg,
 	}
 }
+
+// AlertError is a method on data that takes a string and puts in
+// in the Alert -> Message field
+func (d *Data) AlertError(msg string) {
+	d.Alert = &Alert{
+		Level:   AlertLvlError,
+		Message: msg,
+	}
+}
