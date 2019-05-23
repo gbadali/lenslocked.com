@@ -1,5 +1,7 @@
 package views
 
+import "log"
+
 const (
 	AlertLvlError   = "danger"
 	AlertLvlWaring  = "warning"
@@ -12,6 +14,13 @@ const (
 		"again, and contact us if the problem persists."
 )
 
+// PublicError is an interface that allows the definition of
+// methods for printing public messages
+type PublicError interface {
+	error // embeding the error interface
+	Public() string
+}
+
 // Data is the top level structure that views expect data
 // to come in.
 type Data struct {
@@ -23,4 +32,19 @@ type Data struct {
 type Alert struct {
 	Level   string
 	Message string
+}
+
+// SetAlert is a method that takes in an error and sets the alert for that data
+func (d *Data) SetAlert(err error) {
+	var msg string
+	if pErr, ok := err.(PublicError); ok {
+		msg = pErr.Public()
+	} else {
+		log.Println(err)
+		msg = AlertMsgGeneric
+	}
+	d.Alert = &Alert{
+		Level:   AlertLvlError,
+		Message: msg,
+	}
 }
