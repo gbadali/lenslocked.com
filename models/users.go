@@ -94,13 +94,6 @@ type UserDB interface {
 	Create(user *User) error
 	Update(user *User) error
 	Delete(id uint) error
-
-	// Used to close a DB connection
-	Close() error
-
-	// Migration helpers
-	AutoMigrate() error
-	DestructiveReset() error
 }
 
 // UserService is a set of methods used to manipulate and
@@ -258,39 +251,19 @@ func (uv *userValidator) passwordHashRequired(user *User) error {
 // NewUserService takes the connection  info in as a string and
 // returns a pointer to a UserService struct which for now
 // holds the database info and the hmac info.
-func NewUserService(connectionInfo string) (UserService, error) {
-	ug, err := newUserGorm(connectionInfo)
-	if err != nil {
-		return nil, err
-	}
+func NewUserService(db *gorm.DB) UserService {
+	ug := &userGorm{db}
 	hmac := hash.NewHMAC(hmacSecretKey)
 	uv := newUserValidator(ug, hmac)
 	return &userService{
 		UserDB: uv,
-	}, nil
+	}
 }
 
 // userGorm represents our database inteaction layer
 // and implements the UserDB interface fully.
 type userGorm struct {
-	db   *gorm.DB
-	hmac hash.HMAC
-}
-
-// newUserGorm takes the connection  info in as a string and
-// returns a pointer to a UserService struct which for now
-// holds the database info and the hmac info.
-func newUserGorm(connectionInfo string) (*userGorm, error) {
-	db, err := gorm.Open("postgres", connectionInfo)
-	if err != nil {
-		return nil, err
-	}
-	db.LogMode(true)
-	hmac := hash.NewHMAC(hmacSecretKey)
-	return &userGorm{
-		db:   db,
-		hmac: hmac,
-	}, nil
+	db *gorm.DB
 }
 
 // userValidator is our validation layer that validates
@@ -311,11 +284,6 @@ func newUserValidator(udb UserDB, hmac hash.HMAC) *userValidator {
 		emailRegex: regexp.MustCompile(
 			`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,16}$`),
 	}
-}
-
-// Close closes the userGorm database connection
-func (ug *userGorm) Close() error {
-	return ug.db.Close()
 }
 
 // Create will create the item in the db
@@ -535,24 +503,6 @@ func (us *userService) Authenticate(email, password string) (*User, error) {
 	default:
 		return nil, err
 	}
-}
-
-// AutoMigrate will attempt to automatically migrate the
-// users table
-func (ug *userGorm) AutoMigrate() error {
-	if err := ug.db.AutoMigrate(&User{}).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
-// DestructiveReset ddrops the user table and rebuilds it
-func (ug *userGorm) DestructiveReset() error {
-	err := ug.db.DropTableIfExists(&User{}).Error
-	if err != nil {
-		return err
-	}
-	return ug.AutoMigrate()
 }
 
 // first will query using the provided gorm.DB and it will
