@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gbadali/lenslocked.com/controllers"
+	"github.com/gbadali/lenslocked.com/middleware"
 	"github.com/gbadali/lenslocked.com/models"
 	"github.com/gorilla/mux"
 )
@@ -38,9 +39,16 @@ func main() {
 	// Do a destructive reset on the DB for schema changes we can't migrate
 	// services.DestructiveReset()
 
+	requireUserMw := middleware.RequireUser{
+		UserService: services.User,
+	}
+
 	staticC := controllers.NewStatic()
 	usersC := controllers.NewUsers(services.User)
 	galleriesC := controllers.NewGalleries(services.Gallery)
+
+	newGallery := requireUserMw.Apply(galleriesC.New)
+	createGallery := requireUserMw.ApplyFn(galleriesC.Create)
 
 	r := mux.NewRouter()
 	r.Handle("/", staticC.Home).Methods("GET")
@@ -52,8 +60,8 @@ func main() {
 	r.HandleFunc("/login", usersC.Login).Methods("POST")
 	r.HandleFunc("/cookietest", usersC.CookieTest).Methods("GET")
 	// !Gallery Routes
-	r.Handle("/galleries/new", galleriesC.New).Methods("GET")
-	r.HandleFunc("/galleries", galleriesC.Create).Methods("POST")
+	r.Handle("/galleries/new", newGallery).Methods("GET")
+	r.HandleFunc("/galleries", createGallery).Methods("POST")
 
 	r.NotFoundHandler = http.HandlerFunc(notFoundHandler)
 
