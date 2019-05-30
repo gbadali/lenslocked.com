@@ -39,18 +39,19 @@ func main() {
 	// Do a destructive reset on the DB for schema changes we can't migrate
 	// services.DestructiveReset()
 
+	r := mux.NewRouter()
+
+	staticC := controllers.NewStatic()
+	usersC := controllers.NewUsers(services.User)
+	galleriesC := controllers.NewGalleries(services.Gallery, r)
+
 	requireUserMw := middleware.RequireUser{
 		UserService: services.User,
 	}
 
-	staticC := controllers.NewStatic()
-	usersC := controllers.NewUsers(services.User)
-	galleriesC := controllers.NewGalleries(services.Gallery)
-
 	newGallery := requireUserMw.Apply(galleriesC.New)
 	createGallery := requireUserMw.ApplyFn(galleriesC.Create)
 
-	r := mux.NewRouter()
 	r.Handle("/", staticC.Home).Methods("GET")
 	r.Handle("/contact", staticC.Contact).Methods("GET")
 	r.Handle("/faq", staticC.FAQ).Methods("GET")
@@ -63,7 +64,7 @@ func main() {
 	r.Handle("/galleries/new", newGallery).Methods("GET")
 	r.HandleFunc("/galleries", createGallery).Methods("POST")
 	r.HandleFunc("/galleries/{id:[0-9]+}",
-		galleriesC.Show).Methods("GET")
+		galleriesC.Show).Methods("GET").Name(controllers.ShowGallery)
 
 	r.NotFoundHandler = http.HandlerFunc(notFoundHandler)
 
