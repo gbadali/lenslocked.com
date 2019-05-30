@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gbadali/lenslocked.com/context"
 	"github.com/gbadali/lenslocked.com/models"
 )
 
@@ -28,6 +29,10 @@ func (mw *RequireUser) ApplyFn(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		fmt.Println("User found: ", user)
+
+		ctx := r.Context()
+		ctx = context.WithUser(ctx, user)
+		r = r.WithContext(ctx)
 		next(w, r)
 	})
 }
