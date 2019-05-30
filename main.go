@@ -65,7 +65,8 @@ func main() {
 	r.HandleFunc("/galleries", createGallery).Methods("POST")
 	r.HandleFunc("/galleries/{id:[0-9]+}",
 		galleriesC.Show).Methods("GET").Name(controllers.ShowGallery)
-
+	r.HandleFunc("/galleries/{id:[0-9]+}/edit",
+		requireUserMw.ApplyFn(galleriesC.Edit)).Methods("GET")
 	r.NotFoundHandler = http.HandlerFunc(notFoundHandler)
 
 	fmt.Println("Starting the server on :3000...")
