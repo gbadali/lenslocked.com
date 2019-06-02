@@ -13,7 +13,9 @@ import (
 )
 
 const (
-	ShowGallery = "show_gallery"
+	IndexGalleries = "index_galleries"
+	ShowGallery    = "show_gallery"
+	EditGallery    = "edit_gallery"
 )
 
 // Galleries stores the different views that the Gallery has
@@ -51,7 +53,7 @@ func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 	var form GalleryForm
 	if err := parseForm(r, &form); err != nil {
 		vd.SetAlert(err)
-		g.New.Render(w, vd)
+		g.New.Render(w, r, vd)
 		return
 	}
 	user := context.User(r.Context())
@@ -61,11 +63,11 @@ func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := g.gs.Create(&gallery); err != nil {
 		vd.SetAlert(err)
-		g.New.Render(w, vd)
+		g.New.Render(w, r, vd)
 		return
 	}
 
-	url, err := g.r.Get(ShowGallery).URL("id",
+	url, err := g.r.Get(EditGallery).URL("id",
 		strconv.Itoa(int(gallery.ID)))
 	if err != nil {
 		http.Redirect(w, r, "/", http.StatusFound)
@@ -83,7 +85,7 @@ func (g *Galleries) Show(w http.ResponseWriter, r *http.Request) {
 	}
 	var vd views.Data
 	vd.Yield = gallery
-	g.ShowView.Render(w, vd)
+	g.ShowView.Render(w, r, vd)
 }
 
 // Edit ...
@@ -104,7 +106,7 @@ func (g *Galleries) Edit(w http.ResponseWriter, r *http.Request) {
 	}
 	var vd views.Data
 	vd.Yield = gallery
-	g.EditView.Render(w, vd)
+	g.EditView.Render(w, r, vd)
 }
 
 // Update ...
@@ -127,7 +129,7 @@ func (g *Galleries) Update(w http.ResponseWriter, r *http.Request) {
 		// If there is an error we are going to render the
 		// EditView again with an alert message
 		vd.SetAlert(err)
-		g.EditView.Render(w, vd)
+		g.EditView.Render(w, r, vd)
 		return
 	}
 	gallery.Title = form.Title
@@ -143,7 +145,7 @@ func (g *Galleries) Update(w http.ResponseWriter, r *http.Request) {
 			Message: "Gallery successfully updated!",
 		}
 	}
-	g.EditView.Render(w, vd)
+	g.EditView.Render(w, r, vd)
 }
 
 // Delete ...
@@ -166,13 +168,15 @@ func (g *Galleries) Delete(w http.ResponseWriter, r *http.Request) {
 		// is rendered correctly.
 		vd.SetAlert(err)
 		vd.Yield = gallery
-		g.EditView.Render(w, vd)
+		g.EditView.Render(w, r, vd)
 		return
 	}
-	// TODO: We will eventually want to redirect to the index
-	// page that lists all galleries this user owns, but for now
-	// a success message will suffice.
-	fmt.Fprintln(w, "successfully deleted!")
+	url, err := g.r.Get(IndexGalleries).URL()
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, url.Path, http.StatusFound)
 }
 
 // Index ...
@@ -186,7 +190,7 @@ func (g *Galleries) Index(w http.ResponseWriter, r *http.Request) {
 	}
 	var vd views.Data
 	vd.Yield = galleries
-	g.IndexView.Render(w, vd)
+	g.IndexView.Render(w, r, vd)
 }
 
 func (g *Galleries) galleryByID(w http.ResponseWriter,

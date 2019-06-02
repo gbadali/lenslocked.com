@@ -1,34 +1,40 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gbadali/lenslocked.com/context"
 	"github.com/gbadali/lenslocked.com/models"
 )
 
-type RequireUser struct {
+// User middleware will lookup the current user via their
+// remember_token cookie using the UserService. If the user
+// is found, they will be set on the request context.
+// Regardless, the next handler is always called.
+type User struct {
 	models.UserService
 }
 
-// ApllyFn will return an http.HandlerFunc that will
+func (mw *User) Apply(next http.Handler) http.HandlerFunc {
+	return mw.ApplyFn(next.ServeHTTP)
+}
+
+// ApplyFn will return an http.HandlerFunc that will
 // check to see if a user is logged in and then either
 // call next(w, r) if they are, or redirect them to the
 // login page if they are not.
-func (mw *RequireUser) ApplyFn(next http.HandlerFunc) http.HandlerFunc {
+func (mw *User) ApplyFn(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("remember_token")
 		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusFound)
+			next(w, r)
 			return
 		}
 		user, err := mw.UserService.ByRemember(cookie.Value)
 		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusFound)
+			next(w, r)
 			return
 		}
-		fmt.Println("User found: ", user)
 
 		ctx := r.Context()
 		ctx = context.WithUser(ctx, user)
@@ -37,6 +43,29 @@ func (mw *RequireUser) ApplyFn(next http.HandlerFunc) http.HandlerFunc {
 	})
 }
 
+// RequireUser will redirect the user to the /login page
+// if they have not logged in.  This middleware assumes
+// that User middleware has already been run, otherwise
+// it will always redirect users.
+type RequireUser struct {
+	models.UserService
+}
+
 func (mw *RequireUser) Apply(next http.Handler) http.HandlerFunc {
 	return mw.ApplyFn(next.ServeHTTP)
+}
+
+// ApplyFn will return an http.HandlerFunc that will
+// check to see if a user is logged in and then either
+// call next(w, r) if they are, or redirect them to the
+// login page if they are not.
+func (mw *RequireUser) ApplyFn(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := context.User(r.Context())
+		if user == nil {
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+		next(w, r)
+	})
 }
