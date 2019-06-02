@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -103,6 +104,75 @@ func (g *Galleries) Edit(w http.ResponseWriter, r *http.Request) {
 	vd.Yield = gallery
 	g.EditView.Render(w, vd)
 }
+
+// Update ...
+// POST /galleries/:id/update
+func (g *Galleries) Update(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("in controllers/galleries.go:Update function")
+	gallery, err := g.galleryByID(w, r)
+	if err != nil {
+		return
+	}
+	user := context.User(r.Context())
+	if gallery.UserID != user.ID {
+		http.Error(w, "Gallery not found", http.StatusNotFound)
+		return
+	}
+	var vd views.Data
+	vd.Yield = gallery
+	var form GalleryForm
+	if err := parseForm(r, &form); err != nil {
+		// If there is an error we are going to render the
+		// EditView again with an alert message
+		vd.SetAlert(err)
+		g.EditView.Render(w, vd)
+		return
+	}
+	gallery.Title = form.Title
+	err = g.gs.Update(gallery)
+	// If there is an error our alert will be an error. Otherwise
+	// we will still rendder an alert, but insteadd it will be
+	// a success message.
+	if err != nil {
+		vd.SetAlert(err)
+	} else {
+		vd.Alert = &views.Alert{
+			Level:   views.AlertLvlSuccess,
+			Message: "Gallery successfully updated!",
+		}
+	}
+	g.EditView.Render(w, vd)
+}
+
+// Delete ...
+// POST /galleries/:idd/delete
+func (g *Galleries) Delete(w http.ResponseWriter, r *http.Request) {
+	// Loookup the gallery using the galleryByID we wrote earlier
+	gallery, err := g.galleryByID(w, r)
+	if err != nil {
+		// If there is an error the galleryByID will have renderd
+		// it for us already
+		return
+	}
+
+	var vd views.Data
+	err = g.gs.Delete(gallery.ID)
+	if err != nil {
+		// If there is an error we wnat to set an alert and
+		// render the edit page with the error.  We also need
+		// to set the Yield to gallery so that the EditView
+		// is rendered correctly.
+		vd.SetAlert(err)
+		vd.Yield = gallery
+		g.EditView.Render(w, vd)
+		return
+	}
+	// TODO: We will eventually want to redirect to the index
+	// page that lists all galleries this user owns, but for now
+	// a success message will suffice.
+	fmt.Fprintln(w, "successfully deleted!")
+}
+
 func (g *Galleries) galleryByID(w http.ResponseWriter,
 	r *http.Request) (*models.Gallery, error) {
 	vars := mux.Vars(r)
