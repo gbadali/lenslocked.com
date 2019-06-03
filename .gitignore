@@ -63,3 +63,4 @@ $RECYCLE.BIN/
 
 tmp/runner-build
 tmp/runner-build-errors.log
+images/**

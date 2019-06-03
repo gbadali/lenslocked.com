@@ -95,6 +95,10 @@ func main() {
 	r.HandleFunc("/galleries/{id:[0-9]+}/delete",
 		requireUserMw.ApplyFn(galleriesC.Delete)).
 		Methods("POST")
+	// !Image routes
+	r.HandleFunc("/galleries/{id:[0-9]+}/images",
+		requireUserMw.ApplyFn(galleriesC.ImageUpload)).
+		Methods("POST")
 
 	// !Other Routes
 	r.NotFoundHandler = http.HandlerFunc(notFoundHandler)
