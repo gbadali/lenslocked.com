@@ -14,7 +14,8 @@ type Gallery struct {
 	// a unique id for each user
 	UserID uint `gorm:"not_null;index`
 	// the title of each gallery
-	Title string `gorm:"not_null`
+	Title  string   `gorm:"not_null`
+	Images []string `gorm:"-"` // dont' try to save this in the DB
 }
 type GalleryService interface {
 	GalleryDB

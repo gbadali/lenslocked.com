@@ -9,6 +9,7 @@ import (
 
 type ImageService interface {
 	Create(galleryID uint, r io.Reader, filename string) error
+	ByGalleryID(galleryID uint) ([]string, error)
 }
 
 func NewImageService() ImageService {
@@ -37,10 +38,23 @@ func (is *imageService) Create(galleryID uint,
 	return nil
 }
 
+func (is *imageService) ByGalleryID(galleryID uint) ([]string, error) {
+	path := is.imagePath(galleryID)
+	strings, err := filepath.Glob(filepath.Join(path, "*"))
+	if err != nil {
+		return nil, err
+	}
+	return strings, nil
+}
+
+func (is *imageService) imagePath(galleryID uint) string {
+	return filepath.Join("images", "galleries",
+		fmt.Sprintf("%v", galleryID))
+}
+
 func (is *imageService) mkIMagePath(galleryID uint) (string, error) {
 	// Setup to create files to store the gallery
-	galleryPath := filepath.Join("images", "galleries",
-		fmt.Sprintf("%v", galleryID))
+	galleryPath := is.imagePath(galleryID)
 	// Create our directory (an any necessary parent dirs)
 	// using 0755 permissions.
 	err := os.MkdirAll(galleryPath, 0755)

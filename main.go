@@ -35,9 +35,9 @@ func main() {
 		panic(err)
 	}
 	defer services.Close()
+	services.DestructiveReset()
 	services.AutoMigrate()
 	// Do a destructive reset on the DB for schema changes we can't migrate
-	// services.DestructiveReset()
 
 	r := mux.NewRouter()
 

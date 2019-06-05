@@ -41,7 +41,7 @@ type GalleryForm struct {
 }
 
 // NewGalleries instantiates the Gallery object and adds the templates
-func NewGalleries(gs models.GalleryService, r *mux.Router) *Galleries {
+func NewGalleries(gs models.GalleryService, is models.ImageService, r *mux.Router) *Galleries {
 	return &Galleries{
 		New:       views.NewView("bootstrap", "galleries/new"),
 		ShowView:  views.NewView("bootstrap", "galleries/show"),
@@ -268,5 +268,7 @@ func (g *Galleries) galleryByID(w http.ResponseWriter,
 		}
 		return nil, err
 	}
+	images, _ := g.is.ByGalleryID(gallery.ID)
+	gallery.Images = images
 	return gallery, nil
 }
