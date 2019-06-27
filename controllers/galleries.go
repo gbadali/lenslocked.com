@@ -24,17 +24,6 @@ const (
 	maxMultipartMem = 1 << 20 // 1 megabyte
 )
 
-// Galleries stores the different views that the Gallery has
-type Galleries struct {
-	New       *views.View
-	ShowView  *views.View
-	EditView  *views.View
-	IndexView *views.View
-	gs        models.GalleryService
-	is        models.ImageService
-	r         *mux.Router
-}
-
 // GalleryForm provides some structure to the new gallery form
 type GalleryForm struct {
 	Title string `schema: "title"`
@@ -51,6 +40,17 @@ func NewGalleries(gs models.GalleryService, is models.ImageService, r *mux.Route
 		is:        is,
 		r:         r,
 	}
+}
+
+// Galleries stores the different views that the Gallery has
+type Galleries struct {
+	New       *views.View
+	ShowView  *views.View
+	EditView  *views.View
+	IndexView *views.View
+	gs        models.GalleryService
+	is        models.ImageService
+	r         *mux.Router
 }
 
 // Create takes the information from the new Gallery form and uses
@@ -222,7 +222,7 @@ func (g *Galleries) ImageUpload(w http.ResponseWriter, r *http.Request) {
 		g.EditView.Render(w, r, vd)
 		return
 	}
-	// Iterate over uploadeed files to process them.
+	// Iterate over uploaded files to process them.
 	files := r.MultipartForm.File["images"]
 	for _, f := range files {
 		// Open the uploaded file

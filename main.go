@@ -35,9 +35,9 @@ func main() {
 		panic(err)
 	}
 	defer services.Close()
-	services.DestructiveReset()
-	services.AutoMigrate()
 	// Do a destructive reset on the DB for schema changes we can't migrate
+	// services.DestructiveReset()
+	services.AutoMigrate()
 
 	r := mux.NewRouter()
 
@@ -99,6 +99,8 @@ func main() {
 	r.HandleFunc("/galleries/{id:[0-9]+}/images",
 		requireUserMw.ApplyFn(galleriesC.ImageUpload)).
 		Methods("POST")
+	imageHandler := http.FileServer(http.Dir("./images/"))
+	r.PathPrefix("/images/").Handler(http.StripPrefix("/images/", imageHandler))
 
 	// !Other Routes
 	r.NotFoundHandler = http.HandlerFunc(notFoundHandler)
