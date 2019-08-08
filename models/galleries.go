@@ -14,11 +14,28 @@ type Gallery struct {
 	// a unique id for each user
 	UserID uint `gorm:"not_null;index`
 	// the title of each gallery
-	Title  string   `gorm:"not_null`
-	Images []string `gorm:"-"` // dont' try to save this in the DB
+	Title  string  `gorm:"not_null`
+	Images []Image `gorm:"-"` // dont' try to save this in the DB
 }
 type GalleryService interface {
 	GalleryDB
+}
+
+func (g *Gallery) ImagesSplitN(n int) [][]Image {
+	// create out 2D slice
+	ret := make([][]Image, n)
+	// Create the inner slices - we need N of them and wee will
+	// start them with a size of 0.
+	for i := 0; i < n; i++ {
+		ret[i] = make([]Image, 0)
+	}
+	// iterate over oour images, using index % n to determine
+	// which of the slices in ret to add the image to.
+	for i, img := range g.Images {
+		bucket := i % n
+		ret[bucket] = append(ret[bucket], img)
+	}
+	return ret
 }
 
 //GalleryDB is used to interact with the galleries database.

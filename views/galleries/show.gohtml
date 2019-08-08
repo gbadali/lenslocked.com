@@ -4,9 +4,23 @@
         <h1>
             {{.Title}}
         </h1>
-            {{range .Images}}
-                <img src="{{.}}">
-            {{end}}
     </div>
 </div>
+<div class="row">
+    {{range .ImagesSplitN 3}}
+    <div class="col-md-4">
+        {{range .}}
+        <a href="{{.Path}}">
+            <img src="{{.Path}}" class="thumbnail">
+        </a>
+        {{end}}
+    </div>
+    {{end}}
+</div>
+<!--This is bad practice-->
+<style>
+    .thumbnail {
+        width: 100%;
+    }
+</style>
 {{end}}
