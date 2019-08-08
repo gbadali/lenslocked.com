@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gbadali/lenslocked.com/models"
@@ -40,6 +41,7 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	var vd views.Data
 	var form SignupForm
 	if err := parseForm(r, &form); err != nil {
+		log.Println(err)
 		vd.SetAlert(err)
 		u.NewView.Render(w, r, vd)
 		return
@@ -50,12 +52,14 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		Password: form.Password,
 	}
 	if err := u.us.Create(&user); err != nil {
+		log.Println(err)
 		vd.SetAlert(err)
 		u.NewView.Render(w, r, vd)
 		return
 	}
 	err := u.signIn(w, &user)
 	if err != nil {
+		log.Println(err)
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
@@ -76,6 +80,7 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 	var vd views.Data
 	var form LoginForm
 	if err := parseForm(r, &form); err != nil {
+		log.Println(err)
 		vd.SetAlert(err)
 		u.LoginView.Render(w, r, vd)
 		return
@@ -86,6 +91,7 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 		case models.ErrNotFound:
 			vd.AlertError("No user exists with that email address")
 		default:
+			log.Println(err)
 			vd.SetAlert(err)
 		}
 		u.LoginView.Render(w, r, vd)
@@ -94,6 +100,7 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 
 	err = u.signIn(w, user)
 	if err != nil {
+		log.Println(err)
 		vd.SetAlert(err)
 		u.LoginView.Render(w, r, vd)
 		return
@@ -127,11 +134,13 @@ func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
 func (u *Users) CookieTest(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("remember_token")
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	user, err := u.us.ByRemember(cookie.Value)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
