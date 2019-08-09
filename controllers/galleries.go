@@ -296,7 +296,7 @@ func (g *Galleries) galleryByID(w http.ResponseWriter,
 	idStr := vars["id"]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		loog.Println(err)
+		log.Println(err)
 		http.Error(w, "Invalid gallery ID", http.StatusNotFound)
 		return nil, err
 	}
@@ -316,3 +316,5 @@ func (g *Galleries) galleryByID(w http.ResponseWriter,
 	gallery.Images = images
 	return gallery, nil
 }
+
+

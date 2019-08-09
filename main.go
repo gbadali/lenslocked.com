@@ -1,6 +1,10 @@
 package main
 
 import (
+	"github.com/gbadali/lenslocked.com/rand"
+	
+	
+	"github.com/gorilla/csrf"
 	"fmt"
 	"net/http"
 
@@ -18,6 +22,7 @@ const (
 	dbname   = "lenslocked_dev"
 )
 
+
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusNotFound) // StatusNotFound = 404
@@ -34,10 +39,19 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	
 	defer services.Close()
 	// Do a destructive reset on the DB for schema changes we can't migrate
 	// services.DestructiveReset()
 	services.AutoMigrate()
+
+	// TODO: Update this to be a config variable
+	isProd := false
+	b, err := rand.Bytes(32)
+	if err != nil {
+		panic(err)
+	}
+	csrfMw := csrf.Protect(b, csrf.Secure(isProd))
 
 	r := mux.NewRouter()
 
@@ -109,7 +123,7 @@ func main() {
 	r.NotFoundHandler = http.HandlerFunc(notFoundHandler)
 
 	fmt.Println("Starting the server on :3000...")
-	http.ListenAndServe(":3000", userMw.Apply(r))
+	http.ListenAndServe(":3000", csrfMw(userMw.Apply(r)))
 	// !Assets
 	assetHandler := http.FileServer(http.Dir("./assets/"))
 	assetHandler = http.StripPrefix("/assets/", assetHandler)

@@ -2,10 +2,14 @@ package views
 
 import (
 	"bytes"
+	"errors"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"path/filepath"
+
+	"github.com/gorilla/csrf"
 
 	"github.com/gbadali/lenslocked.com/context"
 )
@@ -29,8 +33,21 @@ func NewView(layout string, files ...string) *View {
 	addTemplatePath(files)
 	addTemplateExt(files)
 	files = append(files, layoutFiles()...)
-	t, err := template.ParseFiles(files...)
+	// We are chaning how we create our templates, calling
+	// New("") to give us a template that we can add a function to
+	// before finally passing in files to parse as part of the template.
+	t, err := template.New("").Funcs(template.FuncMap{
+		"csrfField": func() (template.HTML, error) {
+			// If this is called without being replace with a proper implementation
+			// returning an eror as the second argument will cause our tempalte
+			// package to return an error when executed.
+			return "", errors.New("csrfField is not implemented")
+		},
+		// Once we have our template with a function we are going to pass in files
+		// to parse, much like we were previously.
+	}).ParseFiles(files...)
 	if err != nil {
+		log.Println(err)
 		panic(err)
 	}
 
@@ -60,8 +77,21 @@ func (v *View) Render(w http.ResponseWriter, r *http.Request, data interface{}) 
 	// Lookup and set the user to the User field
 	vd.User = context.User(r.Context())
 	var buf bytes.Buffer
-	err := v.Template.ExecuteTemplate(&buf, v.Layout, vd)
+
+	// We need to create the csrfField using the current http request.
+	csrfField := csrf.TemplateField(r)
+	tpl := v.Template.Funcs(template.FuncMap{
+		// We can also change the return type of our function, since we no longer
+		// need to worry about errors.
+		"csrfField": func() template.HTML {
+			// We can then create this closure that returns csrfField for
+			// any template that needs access to it.
+			return csrfField
+		},
+	})
+	err := tpl.ExecuteTemplate(&buf, v.Layout, vd)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Something went wrong.  If the problem "+
 			"persists, please email support@lenslocked.com",
 			http.StatusInternalServerError)
