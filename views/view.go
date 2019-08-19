@@ -26,7 +26,7 @@ type View struct {
 }
 
 // NewView takes in a string for the layouts and an array of strings for the
-// for the files and returns a pointer to a view object.  It appends the
+// Files and returns a pointer to a view object.  It appends the
 // TemplateExt and TemplateDir to the file name.  As well as loading all
 // of the layout files for the templates.
 func NewView(layout string, files ...string) *View {
@@ -42,6 +42,9 @@ func NewView(layout string, files ...string) *View {
 			// returning an eror as the second argument will cause our tempalte
 			// package to return an error when executed.
 			return "", errors.New("csrfField is not implemented")
+		},
+		"pathEscape": func(s string) string {
+			return url.PathEscape(s)
 		},
 		// Once we have our template with a function we are going to pass in files
 		// to parse, much like we were previously.
