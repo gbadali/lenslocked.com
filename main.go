@@ -2,11 +2,11 @@ package main
 
 import (
 	"github.com/gbadali/lenslocked.com/rand"
-	
-	
-	"github.com/gorilla/csrf"
+
 	"fmt"
 	"net/http"
+
+	"github.com/gorilla/csrf"
 
 	"github.com/gbadali/lenslocked.com/controllers"
 	"github.com/gbadali/lenslocked.com/middleware"
@@ -14,6 +14,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// TODO: move to config file
 const (
 	host     = "localhost"
 	port     = 5432
@@ -22,7 +23,6 @@ const (
 	dbname   = "lenslocked_dev"
 )
 
-
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusNotFound) // StatusNotFound = 404
@@ -30,28 +30,31 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// Create a DB connection string and then use it to
-	// create our model services.
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
-	services, err := models.NewServices(psqlInfo)
+	cfg := DefaultConfig()
+	dbCfg := DefaultPostgresConfig()
+	services, err := models.NewServices(
+		models.WithGorm(dbCfg.Dialect(), dbCfg.ConnectionInfo()),
+		models.WithLogMode(!cfg.IsProd()),
+		models.WithUser(cfg.Pepper, cfg.HMACKey),
+		models.WithGallery(),
+		models.WithImage(),
+	)
+
 	if err != nil {
 		panic(err)
 	}
-	
+
 	defer services.Close()
 	// Do a destructive reset on the DB for schema changes we can't migrate
 	// services.DestructiveReset()
 	services.AutoMigrate()
 
-	// TODO: Update this to be a config variable
-	isProd := false
+	// TODO: this could also be in the config file
 	b, err := rand.Bytes(32)
 	if err != nil {
 		panic(err)
 	}
-	csrfMw := csrf.Protect(b, csrf.Secure(isProd))
+	csrfMw := csrf.Protect(b, csrf.Secure(cfg.IsProd()))
 
 	r := mux.NewRouter()
 

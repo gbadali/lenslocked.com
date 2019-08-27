@@ -1,6 +1,7 @@
 package views
 
 import (
+	"net/url"
 	"bytes"
 	"errors"
 	"html/template"

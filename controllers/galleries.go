@@ -285,7 +285,7 @@ func (g *Galleries) ImageUpload(w http.ResponseWriter, r *http.Request) {
 	url, err := g.r.Get(EditGallery).URL("id",
 		fmt.Sprintf("%v", gallery.ID))
 	if err != nil {
-		htt.Redirect(w, r, "/galleries", http.StatusFound)
+		http.Redirect(w, r, "/galleries", http.StatusFound)
 		return
 	}
 	http.Redirect(w, r, url.Path, http.StatusFound)

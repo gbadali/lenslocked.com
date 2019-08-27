@@ -15,9 +15,6 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
-// TODO: remove this
-const hmacSecretKey = "secret-hmac-key"
-
 // I haven't implemented testing so I am just doing a little bit here.
 var _ UserDB = &userGorm{}
 var _ UserService = &userService{}
@@ -55,7 +52,6 @@ const (
 	// not at least 32 bytes.
 	ErrRememberTooShort modelError = "models: remember toeken " +
 		"must be at least 32 bytes"
-	userPwPepper = "Secret-random-string"
 )
 
 type modelError string
@@ -122,6 +118,7 @@ type User struct {
 
 type userService struct {
 	UserDB
+	pepper string
 }
 
 type userValFn func(*User) error
@@ -143,7 +140,7 @@ func (uv *userValidator) bcryptPassword(user *User) error {
 		// we don't need to run this if the password hasn't changed
 		return nil
 	}
-	pwBytes := []byte(user.Password + userPwPepper)
+	pwBytes := []byte(user.Password + uv.pepper)
 	hashedBytes, err := bcrypt.GenerateFromPassword(pwBytes,
 		bcrypt.DefaultCost)
 	if err != nil {
@@ -251,12 +248,13 @@ func (uv *userValidator) passwordHashRequired(user *User) error {
 // NewUserService takes the connection  info in as a string and
 // returns a pointer to a UserService struct which for now
 // holds the database info and the hmac info.
-func NewUserService(db *gorm.DB) UserService {
+func NewUserService(db *gorm.DB, pepper, hmacKey string) UserService {
 	ug := &userGorm{db}
-	hmac := hash.NewHMAC(hmacSecretKey)
-	uv := newUserValidator(ug, hmac)
+	hmac := hash.NewHMAC(hmacKey)
+	uv := newUserValidator(ug, hmac, pepper)
 	return &userService{
 		UserDB: uv,
+		pepper: pepper,
 	}
 }
 
@@ -273,14 +271,16 @@ type userValidator struct {
 	UserDB
 	hmac       hash.HMAC
 	emailRegex *regexp.Regexp
+	pepper     string
 }
 
 // newUserValidator takes a UserDB and HMAC and returns a pointer to a userValidator
 // it adds the regexp to check for emails
-func newUserValidator(udb UserDB, hmac hash.HMAC) *userValidator {
+func newUserValidator(udb UserDB, hmac hash.HMAC, pepper string) *userValidator {
 	return &userValidator{
 		UserDB: udb,
 		hmac:   hmac,
+		pepper: pepper,
 		emailRegex: regexp.MustCompile(
 			`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,16}$`),
 	}
@@ -493,7 +493,7 @@ func (us *userService) Authenticate(email, password string) (*User, error) {
 	}
 	err = bcrypt.CompareHashAndPassword(
 		[]byte(foundUser.PasswordHash),
-		[]byte(password+userPwPepper))
+		[]byte(password+us.pepper))
 
 	switch err {
 	case nil:
